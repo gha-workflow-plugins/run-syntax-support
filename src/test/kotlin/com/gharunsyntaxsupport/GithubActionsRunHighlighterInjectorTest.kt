@@ -23,6 +23,11 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
         runTestCase("run-python.yaml", "Python")
     }
 
+    @Test
+    fun `github script injection in run step`() {
+        runTestCase("run-ghscript.yaml", "Javascript")
+    }
+
     private fun runTestCase(file: String, language: String) {
         val file = myFixture.configureByFile(".github/${file}")
         val offset = myFixture.caretOffset
