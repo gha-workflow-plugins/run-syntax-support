@@ -4,6 +4,7 @@ import com.intellij.lang.Language
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import org.jetbrains.yaml.psi.*
 import org.jetbrains.annotations.NotNull
@@ -19,7 +20,7 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         if (!virtualFile.path.contains(".github/")) return
 
         if (context is YAMLScalar) {
-            val language = resolver.firstNotNullOf { it.resolveLanguage(context, virtualFile) }
+            val language = resolveLanguage(context, virtualFile) ?: return
 
             // Skip GitHub Expressions
             val text = context.text
@@ -56,6 +57,18 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
                 registrar.doneInjecting()
             }
         }
+    }
+
+    private fun resolveLanguage(
+        context: YAMLScalar,
+        virtualFile: VirtualFile
+    ): Language? {
+        var language: Language? = null
+        for (resolver in resolver) {
+            language = resolver.resolveLanguage(context, virtualFile)
+            if (language != null) break
+        }
+        return language
     }
 
     override fun elementsToInjectIn(): List<Class<out PsiElement>> {

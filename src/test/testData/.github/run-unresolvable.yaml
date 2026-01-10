@@ -1,0 +1,5 @@
+jobs:
+  build:
+    steps:
+      - name: Can't be resolved
+        uses: any<caret>
