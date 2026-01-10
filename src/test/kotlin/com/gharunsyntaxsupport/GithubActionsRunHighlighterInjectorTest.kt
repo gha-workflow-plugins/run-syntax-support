@@ -25,7 +25,7 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
 
     @Test
     fun `github script injection in run step`() {
-        runTestCase("run-ghscript.yaml", "Javascript")
+        runTestCase("run-ghscript.yaml", "JavaScript")
     }
 
     private fun runTestCase(file: String, language: String) {

@@ -22,8 +22,9 @@ dependencies {
         bundledPlugin("org.jetbrains.plugins.yaml")
 
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
-        testBundledPlugins("com.intellij.modules.json", "com.jetbrains.sh", "org.jetbrains.plugins.github", "org.toml.lang")
+        testBundledPlugins("com.intellij.modules.json", "com.jetbrains.sh", "org.jetbrains.plugins.github", "org.toml.lang", "JavaScript")
         testPlugin("PythonCore", "251.26927.70")
+
     }
 
     testImplementation(kotlin("test"))

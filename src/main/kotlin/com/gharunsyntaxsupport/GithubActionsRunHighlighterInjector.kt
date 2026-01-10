@@ -9,7 +9,10 @@ import org.jetbrains.yaml.psi.*
 import org.jetbrains.annotations.NotNull
 
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
-    val resolver = listOf<LanguageResolver>(RunActionResolver())
+    val resolver = listOf<LanguageResolver>(
+        RunActionResolver(),
+        GithubScriptResolver()
+    )
 
     override fun getLanguagesToInject(@NotNull registrar: MultiHostRegistrar, @NotNull context: PsiElement) {
         val virtualFile = context.containingFile.virtualFile ?: return
