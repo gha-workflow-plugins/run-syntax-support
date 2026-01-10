@@ -9,27 +9,14 @@ import org.jetbrains.yaml.psi.*
 import org.jetbrains.annotations.NotNull
 
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
+    val resolver = listOf<LanguageResolver>(RunActionResolver())
+
     override fun getLanguagesToInject(@NotNull registrar: MultiHostRegistrar, @NotNull context: PsiElement) {
         val virtualFile = context.containingFile.virtualFile ?: return
         if (!virtualFile.path.contains(".github/")) return
 
         if (context is YAMLScalar) {
-            val runKeyValue = context.parent as? YAMLKeyValue ?: return
-            if (runKeyValue.keyText != "run") return
-
-            val parentMapping = runKeyValue.parent as? YAMLMapping ?: return
-            val shellValue = parentMapping.keyValues.find { it.keyText == "shell" }?.valueText
-
-            // Determine which language to inject based on shell
-            val language = when {
-                shellValue == null -> Language.findLanguageByID("Shell Script")
-                shellValue.contains("pwsh", true) -> Language.findLanguageByID("PowerShell")
-                shellValue.contains("python", true) -> Language.findLanguageByID("Python")
-                shellValue.contains("cmd", true) -> Language.findLanguageByID("Batch")
-                shellValue.contains("bash", true) -> Language.findLanguageByID("Shell Script")
-                shellValue.contains("sh", true) -> Language.findLanguageByID("Shell Script")
-                else -> Language.findLanguageByID("Shell Script")
-            } ?: return
+            val language = resolver.firstNotNullOf { it.resolveLanguage(context, virtualFile) }
 
             // Skip GitHub Expressions
             val text = context.text
