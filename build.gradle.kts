@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
-    id("org.jetbrains.intellij.platform") version "2.6.0"
+    id("org.jetbrains.kotlin.jvm") version "2.3.0"
+    id("org.jetbrains.intellij.platform") version "2.10.5"
 }
 
 group = "com.gha-workflow-plugins.run-syntax-support"
@@ -18,12 +18,13 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        create("IU", "2024.3")
+        create("IU", "2025.1.4.1")
         bundledPlugin("org.jetbrains.plugins.yaml")
 
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
-        testBundledPlugins("com.intellij.modules.json", "com.jetbrains.sh", "org.jetbrains.plugins.github", "org.toml.lang")
+        testBundledPlugins("com.intellij.modules.json", "com.jetbrains.sh", "org.jetbrains.plugins.github", "org.toml.lang", "JavaScript")
         testPlugin("PythonCore", "251.26927.70")
+
     }
 
     testImplementation(kotlin("test"))

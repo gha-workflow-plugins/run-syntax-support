@@ -8,6 +8,16 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
 
     override fun getTestDataPath(): String = "src/test/testData"
 
+
+    @Test
+    fun `gracefully handles unresolvable cases`() {
+        val file = myFixture.configureByFile(".github/run-unresolvable.yaml")
+        val offset = myFixture.caretOffset
+        val element = file.findElementAt(offset)
+        assertThat(element).isNotNull
+        assertThat(element!!.language.id).isEqualTo("yaml")
+    }
+
     @Test
     fun `shell script injection in run step`() {
         runTestCase("run-bash.yaml", "Shell Script")
@@ -21,6 +31,11 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
     @Test
     fun `python script injection in run step`() {
         runTestCase("run-python.yaml", "Python")
+    }
+
+    @Test
+    fun `github script injection in run step`() {
+        runTestCase("run-ghscript.yaml", "JavaScript")
     }
 
     private fun runTestCase(file: String, language: String) {

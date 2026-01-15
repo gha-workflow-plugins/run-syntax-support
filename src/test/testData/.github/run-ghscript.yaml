@@ -1,0 +1,7 @@
+jobs:
+  build:
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+              console.log("hello");<caret>
