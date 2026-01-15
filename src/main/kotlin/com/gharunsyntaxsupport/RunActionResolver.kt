@@ -7,8 +7,6 @@ import org.jetbrains.yaml.psi.YAMLMapping
 import org.jetbrains.yaml.psi.YAMLScalar
 import kotlin.text.contains
 
-
-
 class RunActionResolver : LanguageResolver {
     override fun resolveLanguage(
         element: YAMLScalar,

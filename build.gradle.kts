@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.gha-workflow-plugins.run-syntax-support"
-version = "0.3"
+version = "0.4"
 
 repositories {
     mavenCentral()
@@ -34,12 +34,20 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "243"
+            sinceBuild = "251"
         }
 
         changeNotes = """
-      Initial version
-    """.trimIndent()
+    <b>0.4</b>
+    <ul>
+      <li>Added github-script language injection</li>
+      <li>Upgraded platform to 2025.1</li>
+    </ul>
+    <b>0.3</b>
+    <ul>
+      <li>Initial version</li>
+    </ul>
+  """.trimIndent()
     }
 }
 

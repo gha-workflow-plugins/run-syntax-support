@@ -10,7 +10,7 @@ import org.jetbrains.yaml.psi.*
 import org.jetbrains.annotations.NotNull
 
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
-    val resolver = listOf<LanguageResolver>(
+    val resolvers = listOf(
         RunActionResolver(),
         GithubScriptResolver()
     )
@@ -64,7 +64,7 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         virtualFile: VirtualFile
     ): Language? {
         var language: Language? = null
-        for (resolver in resolver) {
+        for (resolver in resolvers) {
             language = resolver.resolveLanguage(context, virtualFile)
             if (language != null) break
         }
