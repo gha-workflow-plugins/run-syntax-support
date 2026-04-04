@@ -6,9 +6,9 @@ import com.intellij.lang.injection.MultiHostRegistrar
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.jetbrains.jsonSchema.ide.JsonSchemaService
 import org.jetbrains.yaml.psi.*
 import org.jetbrains.annotations.NotNull
-
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
     val resolvers = listOf(
         RunActionResolver(),
@@ -17,7 +17,12 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
 
     override fun getLanguagesToInject(@NotNull registrar: MultiHostRegistrar, @NotNull context: PsiElement) {
         val virtualFile = context.containingFile.virtualFile ?: return
-        if (!virtualFile.path.contains(".github/")) return
+        val schemaService = JsonSchemaService.Impl.get(context.project)
+
+        val isGithubActionsFile = schemaService
+            .getSchemaFilesForFile(virtualFile)
+            .any { it.name.contains("github", ignoreCase = true) }
+        if (!isGithubActionsFile) return
 
         if (context is YAMLScalar) {
             val language = resolveLanguage(context, virtualFile) ?: return

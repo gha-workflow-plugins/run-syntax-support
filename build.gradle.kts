@@ -20,6 +20,7 @@ dependencies {
     intellijPlatform {
         create("IU", "2025.1.4.1")
         bundledPlugin("org.jetbrains.plugins.yaml")
+        bundledPlugin("com.intellij.modules.json")
 
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
         testBundledPlugins("com.intellij.modules.json", "com.jetbrains.sh", "org.jetbrains.plugins.github", "org.toml.lang", "JavaScript")
