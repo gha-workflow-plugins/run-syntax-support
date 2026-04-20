@@ -7,8 +7,9 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.jetbrains.jsonSchema.ide.JsonSchemaService
-import org.jetbrains.yaml.psi.*
 import org.jetbrains.annotations.NotNull
+import org.jetbrains.yaml.psi.*
+
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
     val resolvers = listOf(
         RunActionResolver(),
@@ -17,12 +18,7 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
 
     override fun getLanguagesToInject(@NotNull registrar: MultiHostRegistrar, @NotNull context: PsiElement) {
         val virtualFile = context.containingFile.virtualFile ?: return
-        val schemaService = JsonSchemaService.Impl.get(context.project)
-
-        val isGithubActionsFile = schemaService
-            .getSchemaFilesForFile(virtualFile)
-            .any { it.name.contains("github", ignoreCase = true) }
-        if (!isGithubActionsFile) return
+        if (!isGithubActionsFile(context, virtualFile)) return
 
         if (context is YAMLScalar) {
             val language = resolveLanguage(context, virtualFile) ?: return
@@ -62,6 +58,43 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
                 registrar.doneInjecting()
             }
         }
+    }
+
+    private fun isGithubActionsFile(
+        context: PsiElement,
+        virtualFile: VirtualFile
+    ): Boolean {
+        return isGithubWorkflowPath(virtualFile) || hasGithubWorkflowSchema(context, virtualFile)
+    }
+
+    private fun isGithubWorkflowPath(virtualFile: VirtualFile): Boolean {
+        if (virtualFile.isDirectory) return false
+        if (!virtualFile.hasYamlExtension()) return false
+
+        return virtualFile.path
+            .replace('\\', '/')
+            .contains("/.github/workflows/")
+    }
+
+    private fun hasGithubWorkflowSchema(
+        context: PsiElement,
+        virtualFile: VirtualFile
+    ): Boolean {
+        val schemaService = JsonSchemaService.Impl.get(context.project)
+
+        return schemaService
+            .getSchemaFilesForFile(virtualFile)
+            .any { schemaFile ->
+                val schemaPath = schemaFile.path.replace('\\', '/')
+                schemaFile.name.equals("github-workflow.json", ignoreCase = true) ||
+                    schemaPath.contains("github-workflow", ignoreCase = true) ||
+                    schemaPath.contains("github-actions", ignoreCase = true)
+            }
+    }
+
+    private fun VirtualFile.hasYamlExtension(): Boolean {
+        return extension.equals("yml", ignoreCase = true) ||
+            extension.equals("yaml", ignoreCase = true)
     }
 
     private fun resolveLanguage(

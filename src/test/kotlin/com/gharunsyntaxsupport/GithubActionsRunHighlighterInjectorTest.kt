@@ -11,7 +11,16 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
 
     @Test
     fun `gracefully handles unresolvable cases`() {
-        val file = myFixture.configureByFile(".github/run-unresolvable.yaml")
+        val file = myFixture.configureByFile(".github/workflows/run-unresolvable.yaml")
+        val offset = myFixture.caretOffset
+        val element = file.findElementAt(offset)
+        assertThat(element).isNotNull
+        assertThat(element!!.language.id).isEqualTo("yaml")
+    }
+
+    @Test
+    fun `does not inject in non workflow github yaml file`() {
+        val file = myFixture.configureByFile(".github/run-bash.yaml")
         val offset = myFixture.caretOffset
         val element = file.findElementAt(offset)
         assertThat(element).isNotNull
@@ -39,7 +48,7 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
     }
 
     private fun runTestCase(file: String, language: String) {
-        val file = myFixture.configureByFile(".github/${file}")
+        val file = myFixture.configureByFile(".github/workflows/${file}")
         val offset = myFixture.caretOffset
         val element = file.findElementAt(offset)
         assertThat(element).isNotNull
