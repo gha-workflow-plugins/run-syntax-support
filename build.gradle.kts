@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.gha-workflow-plugins.run-syntax-support"
-version = "0.4"
+version = "0.5"
 
 repositories {
     mavenCentral()
@@ -29,7 +29,7 @@ dependencies {
     }
 
     testImplementation(kotlin("test"))
-    testImplementation("org.assertj:assertj-core:3.25.1")
+    testImplementation("org.assertj:assertj-core:3.27.7")
 }
 
 intellijPlatform {
@@ -39,6 +39,11 @@ intellijPlatform {
         }
 
         changeNotes = """
+    <b>0.5</b>
+    <ul>
+      <li>Added syntax highlighting for files associated with the GitHub Actions workflow schema</li>
+      <li>Limited automatic workflow detection to YAML files under .github/workflows</li>
+    </ul>
     <b>0.4</b>
     <ul>
       <li>Added github-script language injection</li>
