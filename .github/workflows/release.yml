@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Version bump type"
+        required: true
+        default: "minor"
+        type: choice
+        options:
+          - minor
+          - major
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Ensure main branch
+        run: |
+          set -euo pipefail
+
+          current_ref="${{ github.ref_name }}"
+
+          if [[ "$current_ref" != "main" ]]; then
+            echo "Release workflow must be run from main. Current ref: $current_ref" >&2
+            exit 1
+          fi
+
+      - name: Get latest CI run status GH
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          conclusion=$(gh run list --branch "${{ github.ref_name }}" -w "ci.yml" --limit 1 --json conclusion --jq '.[0].conclusion')
+
+          echo "Latest CI conclusion: $conclusion"
+          if [ "$conclusion" != "success" ]; then
+            echo "❌ ERROR: Latest CI run did not succeed"
+            exit 1
+          fi
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: "corretto"
+          java-version: 25
+          cache: "gradle"
+
+      - name: Resolve next version
+        id: version
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+
+          release_type="${{ inputs.release_type }}"
+          latest_tag="$(git tag --list 'v[0-9]*.[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+$' | head -n 1 || true)"
+
+          if [[ -n "$latest_tag" ]]; then
+            current="${latest_tag#v}"
+          else
+            current="$(sed -nE 's/^version = "([0-9]+\.[0-9]+)".*/\1/p' build.gradle.kts | head -n 1)"
+          fi
+
+          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            echo "Could not resolve current version. Found: '$current'" >&2
+            exit 1
+          fi
+
+          major="${current%%.*}"
+          minor="${current##*.}"
+
+          case "$release_type" in
+            major)
+              next_major=$((major + 1))
+              next_minor=0
+              ;;
+            minor)
+              next_major="$major"
+              next_minor=$((minor + 1))
+              ;;
+            *)
+              echo "Unsupported release_type: $release_type" >&2
+              exit 1
+              ;;
+          esac
+
+          version="${next_major}.${next_minor}"
+          tag="v${version}"
+
+          if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
+            echo "Tag already exists: $tag" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Resolved release: $tag"
+
+      - name: Update Gradle version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          sed -i -E "s/^version = \"[0-9]+\.[0-9]+\"$/version = \"${VERSION}\"/" build.gradle.kts
+
+          if ! grep -qx "version = \"${VERSION}\"" build.gradle.kts; then
+            echo "Failed to update build.gradle.kts to version ${VERSION}" >&2
+            exit 1
+          fi
+
+          git diff -- build.gradle.kts
+
+      - name: Build plugin
+        run: ./gradlew buildPlugin --stacktrace
+
+      - name: Commit version bump
+        id: commit
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- build.gradle.kts; then
+            echo "No version bump to commit."
+          else
+            git add build.gradle.kts
+            git commit -m "Release ${{ steps.version.outputs.tag }}"
+          fi
+
+          echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Tag release
+        run: |
+          set -euo pipefail
+          git tag -a "${{ steps.version.outputs.tag }}" -m "${{ steps.version.outputs.tag }}"
+
+      - name: Push release commit and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:main
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Publish GitHub Release
+        uses: release-drafter/release-drafter@v7
+        with:
+          publish: true
+          version: ${{ steps.version.outputs.version }}
+          tag: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          commitish: ${{ steps.commit.outputs.release_sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload plugin ZIP to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ steps.version.outputs.tag }}" build/distributions/*.zip --clobber

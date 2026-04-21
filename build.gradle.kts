@@ -1,5 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
+val pluginChangeNotes = providers.fileContents(layout.projectDirectory.file("CHANGE_NOTES.html")).asText.get().trim()
+
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
@@ -38,22 +40,7 @@ intellijPlatform {
             sinceBuild = "251"
         }
 
-        changeNotes = """
-    <b>0.5</b>
-    <ul>
-      <li>Added syntax highlighting for files associated with the GitHub Actions workflow schema</li>
-      <li>Limited automatic workflow detection to YAML files under .github/workflows</li>
-    </ul>
-    <b>0.4</b>
-    <ul>
-      <li>Added github-script language injection</li>
-      <li>Upgraded platform to 2025.1</li>
-    </ul>
-    <b>0.3</b>
-    <ul>
-      <li>Initial version</li>
-    </ul>
-  """.trimIndent()
+        changeNotes = pluginChangeNotes
     }
 }
 
