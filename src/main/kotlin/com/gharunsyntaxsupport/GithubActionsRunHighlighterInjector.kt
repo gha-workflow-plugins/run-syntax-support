@@ -64,19 +64,10 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         context: PsiElement,
         virtualFile: VirtualFile
     ): Boolean {
-        return isGithubWorkflowPath(virtualFile) || hasGithubWorkflowSchema(context, virtualFile)
+        return hasGithubActionOrWorkflowSchema(context, virtualFile)
     }
 
-    private fun isGithubWorkflowPath(virtualFile: VirtualFile): Boolean {
-        if (virtualFile.isDirectory) return false
-        if (!virtualFile.hasYamlExtension()) return false
-
-        return virtualFile.path
-            .replace('\\', '/')
-            .contains("/.github/workflows/")
-    }
-
-    private fun hasGithubWorkflowSchema(
+    private fun hasGithubActionOrWorkflowSchema(
         context: PsiElement,
         virtualFile: VirtualFile
     ): Boolean {
@@ -85,16 +76,8 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         return schemaService
             .getSchemaFilesForFile(virtualFile)
             .any { schemaFile ->
-                val schemaPath = schemaFile.path.replace('\\', '/')
-                schemaFile.name.equals("github-workflow.json", ignoreCase = true) ||
-                    schemaPath.contains("github-workflow", ignoreCase = true) ||
-                    schemaPath.contains("github-actions", ignoreCase = true)
+                listOf("github-action", "github-workflow").any { schemaFile.name == "${it}.json" }
             }
-    }
-
-    private fun VirtualFile.hasYamlExtension(): Boolean {
-        return extension.equals("yml", ignoreCase = true) ||
-            extension.equals("yaml", ignoreCase = true)
     }
 
     private fun resolveLanguage(

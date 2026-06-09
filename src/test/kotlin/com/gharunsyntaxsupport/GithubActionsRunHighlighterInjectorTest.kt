@@ -47,8 +47,17 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
         runTestCase("run-ghscript.yaml", "JavaScript")
     }
 
-    private fun runTestCase(file: String, language: String) {
-        val file = myFixture.configureByFile(".github/workflows/${file}")
+    @Test
+    fun `shell script injection in action run step`() {
+        runActionTestCase("run-bash", "Shell Script")
+    }
+
+    private fun runActionTestCase(path: String, language: String) {
+        runTestCase("action.yaml", language, path)
+    }
+
+    private fun runTestCase(file: String, language: String, prefix: String = ".github/workflows" ) {
+        val file = myFixture.configureByFile("$prefix/$file")
         val offset = myFixture.caretOffset
         val element = file.findElementAt(offset)
         assertThat(element).isNotNull
