@@ -1,0 +1,10 @@
+name: 'Run Bash'
+description: 'Action that runs bash'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check bash
+      shell: bash
+      run: |
+        echo "hello"<caret>
