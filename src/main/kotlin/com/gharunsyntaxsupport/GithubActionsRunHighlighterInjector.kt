@@ -22,9 +22,19 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         if (!isGithubActionsFile(context, virtualFile)) return
 
         if (context is YAMLScalarImpl) {
-            val ranges = context.contentRanges
-            if (ranges.isEmpty()) {
+            val originalRanges = context.contentRanges
+            if (originalRanges.isEmpty()) {
                 return
+            }
+
+            val ranges = mutableListOf<TextRange>()
+            for (originalRange in originalRanges) {
+                var range = originalRange
+                // avoid highlighting blank lines
+                while (range.substring(context.text).endsWith("\n\n")) {
+                    range = TextRange(range.startOffset, range.endOffset - 1)
+                }
+                ranges.add(range)
             }
 
             val language = resolveLanguage(context, virtualFile) ?: return
