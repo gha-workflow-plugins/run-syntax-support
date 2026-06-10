@@ -28,6 +28,11 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
     }
 
     @Test
+    fun `does not inject in indent prefix`() {
+        runTestCase("run-unresolvable-in-indent-prefix.yaml", "yaml")
+    }
+
+    @Test
     fun `shell script injection in run step`() {
         runTestCase("run-bash.yaml", "Shell Script")
     }

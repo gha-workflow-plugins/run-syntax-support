@@ -8,7 +8,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.jetbrains.jsonSchema.ide.JsonSchemaService
 import org.jetbrains.annotations.NotNull
-import org.jetbrains.yaml.psi.*
+import org.jetbrains.yaml.psi.YAMLScalar
+import org.jetbrains.yaml.psi.impl.YAMLScalarImpl
 
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
     val resolvers = listOf(
@@ -20,26 +21,28 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         val virtualFile = context.containingFile.virtualFile ?: return
         if (!isGithubActionsFile(context, virtualFile)) return
 
-        if (context is YAMLScalar) {
+        if (context is YAMLScalarImpl) {
+            val originalRanges = context.contentRanges
+            if (originalRanges.isEmpty()) {
+                return
+            }
+
+            val ranges = mutableListOf<TextRange>()
+            for (originalRange in originalRanges) {
+                var range = originalRange
+                // avoid highlighting blank lines
+                while (range.substring(context.text).endsWith("\n\n")) {
+                    range = TextRange(range.startOffset, range.endOffset - 1)
+                }
+                ranges.add(range)
+            }
+
             val language = resolveLanguage(context, virtualFile) ?: return
 
-            // Skip GitHub Expressions
-            val text = context.text
-            val bashRanges = mutableListOf<TextRange>()
-            val exprRegex = Regex("\\$\\{\\{.*?}}")
+            val ghexpRanges = resolveGithubExpressionRanges(registrar, context)
 
-            var last = 0
-            for (match in exprRegex.findAll(text)) {
-                val start = match.range.first
-                val end = match.range.last + 1
-                if (last < start) {
-                    bashRanges.add(TextRange(last, start))
-                }
-                last = end
-            }
-            if (last < text.length) {
-                bashRanges.add(TextRange(last, text.length))
-            }
+            // Skip GitHub Expressions
+            val bashRanges = resolveExclusions(ranges, ghexpRanges)
 
             if (bashRanges.isNotEmpty()) {
                 registrar.startInjecting(language)
@@ -48,16 +51,43 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
                 }
                 registrar.doneInjecting()
             }
+        }
+    }
 
-            // Inject GitHub Expressions separately
-            val expressionLanguage = Language.findLanguageByID("GithubExpressionLanguage") ?: return
-            for (match in exprRegex.findAll(text)) {
-                val exprRange = TextRange(match.range.first, match.range.last + 1)
-                registrar.startInjecting(expressionLanguage)
-                registrar.addPlace(null, null, context, exprRange)
-                registrar.doneInjecting()
+    private fun resolveExclusions(
+        ranges: Collection<TextRange>,
+        exclusions: Collection<TextRange>
+    ): MutableList<TextRange> {
+        val resolved = mutableListOf<TextRange>()
+        for (range in ranges) {
+            var nextStartOffset = range.startOffset
+            for (excluded in exclusions) {
+                if (range.intersects(excluded)) {
+                    resolved.add(TextRange(nextStartOffset, excluded.startOffset))
+                    nextStartOffset = excluded.endOffset
+                }
+            }
+            if (nextStartOffset < range.endOffset) {
+                resolved.add(TextRange(nextStartOffset, range.endOffset))
             }
         }
+        return resolved
+    }
+
+    private fun resolveGithubExpressionRanges(
+        registrar: MultiHostRegistrar,
+        context: YAMLScalar
+    ): List<TextRange> {
+        val language = Language.findLanguageByID("GithubExpressionLanguage") ?: return emptyList()
+        val ranges = mutableListOf<TextRange>()
+        for (match in Regex("\\$\\{\\{.*?}}").findAll(context.text)) {
+            val range = TextRange(match.range.first, match.range.last + 1)
+            registrar.startInjecting(language)
+            registrar.addPlace(null, null, context, range)
+            registrar.doneInjecting()
+            ranges.add(range)
+        }
+        return ranges
     }
 
     private fun isGithubActionsFile(
