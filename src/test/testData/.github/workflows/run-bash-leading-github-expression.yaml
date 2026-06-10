@@ -1,0 +1,10 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check bash
+        run: |
+          ${{ git<caret>hub.ref }}
+          echo "done"
