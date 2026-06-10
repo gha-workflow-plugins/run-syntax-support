@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.gha-workflow-plugins.run-syntax-support"
-version = "0.5"
+version = "1.0"
 
 repositories {
     mavenCentral()
