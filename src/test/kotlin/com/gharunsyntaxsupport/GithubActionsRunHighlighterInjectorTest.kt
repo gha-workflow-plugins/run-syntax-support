@@ -38,8 +38,18 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
     }
 
     @Test
+    fun `shell script injection on later line of multiline run step`() {
+        runTestCase("run-bash-multiline.yaml", "Shell Script")
+    }
+
+    @Test
     fun `shell script injection with github expressions in run step`() {
         runTestCase("run-bash-with-github-expressions.yaml", "GithubExpressionLanguage")
+    }
+
+    @Test
+    fun `github expression injection when run step starts with expression`() {
+        runTestCase("run-bash-leading-github-expression.yaml", "GithubExpressionLanguage")
     }
 
     @Test
@@ -57,12 +67,12 @@ class GithubActionsRunHighlighterInjectorTest : LightPlatformCodeInsightFixture4
         runActionTestCase("run-bash", "Shell Script")
     }
 
-    private fun runActionTestCase(path: String, language: String) {
-        runTestCase("action.yaml", language, path)
+    private fun runActionTestCase(dir: String, language: String) {
+        runTestCase("action.yaml", language, dir)
     }
 
-    private fun runTestCase(file: String, language: String, prefix: String = ".github/workflows" ) {
-        val file = myFixture.configureByFile("$prefix/$file")
+    private fun runTestCase(file: String, language: String, dir: String = ".github/workflows") {
+        val file = myFixture.configureByFile("$dir/$file")
         val offset = myFixture.caretOffset
         val element = file.findElementAt(offset)
         assertThat(element).isNotNull

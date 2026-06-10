@@ -12,6 +12,11 @@ import org.jetbrains.yaml.psi.YAMLScalar
 import org.jetbrains.yaml.psi.impl.YAMLScalarImpl
 
 class GithubActionsRunHighlighterInjector : MultiHostInjector {
+    companion object {
+        private val SCHEMA_FILE_NAMES = listOf("github-action.json", "github-workflow.json")
+        private val GITHUB_EXPRESSION_REGEX = Regex("\\$\\{\\{.*?}}")
+    }
+
     val resolvers = listOf(
         RunActionResolver(),
         GithubScriptResolver()
@@ -27,11 +32,15 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
                 return
             }
 
+            val text = context.text
             val ranges = mutableListOf<TextRange>()
             for (originalRange in originalRanges) {
                 var range = originalRange
-                // avoid highlighting blank lines
-                while (range.substring(context.text).endsWith("\n\n")) {
+                // trim trailing blank lines so they are not highlighted
+                while (range.length >= 2 &&
+                    text[range.endOffset - 1] == '\n' &&
+                    text[range.endOffset - 2] == '\n'
+                ) {
                     range = TextRange(range.startOffset, range.endOffset - 1)
                 }
                 ranges.add(range)
@@ -39,10 +48,11 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
 
             val language = resolveLanguage(context, virtualFile) ?: return
 
-            val ghexpRanges = resolveGithubExpressionRanges(registrar, context)
+            val expressionRanges = findGithubExpressionRanges(text)
+            injectGithubExpressions(registrar, context, expressionRanges)
 
             // Skip GitHub Expressions
-            val bashRanges = resolveExclusions(ranges, ghexpRanges)
+            val bashRanges = resolveExclusions(ranges, expressionRanges)
 
             if (bashRanges.isNotEmpty()) {
                 registrar.startInjecting(language)
@@ -63,8 +73,10 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
             var nextStartOffset = range.startOffset
             for (excluded in exclusions) {
                 if (range.intersects(excluded)) {
-                    resolved.add(TextRange(nextStartOffset, excluded.startOffset))
-                    nextStartOffset = excluded.endOffset
+                    if (nextStartOffset < excluded.startOffset) {
+                        resolved.add(TextRange(nextStartOffset, excluded.startOffset))
+                    }
+                    nextStartOffset = maxOf(nextStartOffset, excluded.endOffset)
                 }
             }
             if (nextStartOffset < range.endOffset) {
@@ -74,30 +86,27 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         return resolved
     }
 
-    private fun resolveGithubExpressionRanges(
+    private fun findGithubExpressionRanges(text: String): List<TextRange> {
+        return GITHUB_EXPRESSION_REGEX.findAll(text)
+            .map { TextRange(it.range.first, it.range.last + 1) }
+            .toList()
+    }
+
+    private fun injectGithubExpressions(
         registrar: MultiHostRegistrar,
-        context: YAMLScalar
-    ): List<TextRange> {
-        val language = Language.findLanguageByID("GithubExpressionLanguage") ?: return emptyList()
-        val ranges = mutableListOf<TextRange>()
-        for (match in Regex("\\$\\{\\{.*?}}").findAll(context.text)) {
-            val range = TextRange(match.range.first, match.range.last + 1)
+        context: YAMLScalar,
+        ranges: List<TextRange>
+    ) {
+        if (ranges.isEmpty()) return
+        val language = Language.findLanguageByID("GithubExpressionLanguage") ?: return
+        for (range in ranges) {
             registrar.startInjecting(language)
             registrar.addPlace(null, null, context, range)
             registrar.doneInjecting()
-            ranges.add(range)
         }
-        return ranges
     }
 
     private fun isGithubActionsFile(
-        context: PsiElement,
-        virtualFile: VirtualFile
-    ): Boolean {
-        return hasGithubActionOrWorkflowSchema(context, virtualFile)
-    }
-
-    private fun hasGithubActionOrWorkflowSchema(
         context: PsiElement,
         virtualFile: VirtualFile
     ): Boolean {
@@ -106,7 +115,7 @@ class GithubActionsRunHighlighterInjector : MultiHostInjector {
         return schemaService
             .getSchemaFilesForFile(virtualFile)
             .any { schemaFile ->
-                listOf("github-action", "github-workflow").any { schemaFile.name == "${it}.json" }
+                SCHEMA_FILE_NAMES.any { schemaFile.name.equals(it, ignoreCase = true) }
             }
     }
 
